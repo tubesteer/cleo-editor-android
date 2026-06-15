@@ -25,24 +25,28 @@ jobs:
     - name: Grant Execute Permission for Gradle
       run: chmod +x gradlew
 
-    # BAGIAN PERBAIKAN: Membuat file keystore tiruan & menyuntikkan SDK versi 33
-    - name: Bypass Keystore and SDK Missing Error
+    # PERBAIKAN TOTAL: Memotong paksa baris konfigurasi keystore yang rusak
+    - name: Bypass Keystore Error and Inject SDK
       run: |
+        # Buat tiruan properti agar build file tidak membaca null
         echo "storeFile=mock.keystore" > app/keystore.config
         echo "storePassword=mock_password" >> app/keystore.config
         echo "keyAlias=mock_alias" >> app/keystore.config
         echo "keyPassword=mock_password" >> app/keystore.config
         touch app/mock.keystore
         
-        # Menyisipkan compileSdkVersion ke build.gradle secara otomatis sebelum dicompile
+        # Menyisipkan compileSdkVersion ke build.gradle
         sed -i 's/android {/android {\n    compileSdkVersion 33/' app/build.gradle
+        
+        # Menghapus paksa instruksi signingConfigs yang menyebabkan error 'Cannot convert null to File'
+        sed -i '/signingConfigs/,/}/d' app/build.gradle
+        sed -i '/signingConfig signingConfigs./d' app/build.gradle
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug --no-daemon
 
     - name: Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: cleo-editor-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
-        

@@ -25,22 +25,40 @@ jobs:
     - name: Grant Execute Permission for Gradle
       run: chmod +x gradlew
 
-    # PERBAIKAN TOTAL: Memotong paksa baris konfigurasi keystore yang rusak
-    - name: Bypass Keystore Error and Inject SDK
+    # PERBAIKAN TOTAL: Menulis ulang build.gradle agar bersih & kompatibel dengan Gradle baru
+    - name: Rewrite Android Build Configuration
       run: |
-        # Buat tiruan properti agar build file tidak membaca null
-        echo "storeFile=mock.keystore" > app/keystore.config
-        echo "storePassword=mock_password" >> app/keystore.config
-        echo "keyAlias=mock_alias" >> app/keystore.config
-        echo "keyPassword=mock_password" >> app/keystore.config
-        touch app/mock.keystore
-        
-        # Menyisipkan compileSdkVersion ke build.gradle
-        sed -i 's/android {/android {\n    compileSdkVersion 33/' app/build.gradle
-        
-        # Menghapus paksa instruksi signingConfigs yang menyebabkan error 'Cannot convert null to File'
-        sed -i '/signingConfigs/,/}/d' app/build.gradle
-        sed -i '/signingConfig signingConfigs./d' app/build.gradle
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.fastsmartsystem.cleoeditor'
+            compileSdkVersion 33
+
+            defaultConfig {
+                applicationId "com.fastsmartsystem.cleoeditor"
+                minSdkVersion 21
+                targetSdkVersion 33
+                versionCode 1
+                versionName "1.0"
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                }
+            }
+        }
+
+        dependencies {
+            implementation fileTree(dir: 'libs', include: ['*.jar'])
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.9.0'
+            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+        }
+        EOF
 
     - name: Build Debug APK
       run: ./gradlew assembleDebug --no-daemon

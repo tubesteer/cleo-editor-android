@@ -1,52 +1,43 @@
-name: Android CI/CD
+name: Build APK
 
 on:
-  push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Source
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
 
-    # PERBAIKAN UTAMA: Otomatis menyetujui semua lisensi SDK Android agar build tidak berhenti
-    - name: Accept Android SDK Licenses
-      run: |
-        mkdir -p /usr/local/lib/android/sdk/licenses
-        echo -e "\n8933bad161ad4178b1185d1a37fdd41ea6b683a6\nd56f5187479451eabf01fb7437c3550b3118b226\nf682dd75654c1b433a04e554bf5d0d611097a241\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910\n2f35256813483b4cc9d5f8f532d01186942fa0d9" > /usr/local/lib/android/sdk/licenses/android-sdk-license
-        yes | sdkmanager --licenses || true
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-    - name: Grant Execute Permission for Gradle
-      run: chmod +x gradlew
+      - name: Grant Gradle Permission
+        run: chmod +x gradlew
 
-    # PERBAIKAN CONFIG: bypass error keystore asli tanpa merusak struktur module build.gradle bawaan
-    - name: Bypass Keystore Error
-      run: |
-        echo "storeFile=mock.keystore" > app/keystore.config
-        echo "storePassword=mock_password" >> app/keystore.config
-        echo "keyAlias=mock_alias" >> app/keystore.config
-        echo "keyPassword=mock_password" >> app/keystore.config
-        touch app/mock.keystore
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug --no-daemon
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
 
-    - name: Upload Debug APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: cleo-editor-debug-apk
-        path: |
-          **/build/outputs/apk/debug/*.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleo-editor-apk
+          path: |
+            **/build/outputs/apk/debug/*.apk
+            **/build/outputs/apk/release/*.apk

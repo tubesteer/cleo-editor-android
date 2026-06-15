@@ -22,43 +22,24 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    # PERBAIKAN UTAMA: Otomatis menyetujui semua lisensi SDK Android agar build tidak berhenti
+    - name: Accept Android SDK Licenses
+      run: |
+        mkdir -p /usr/local/lib/android/sdk/licenses
+        echo -e "\n8933bad161ad4178b1185d1a37fdd41ea6b683a6\nd56f5187479451eabf01fb7437c3550b3118b226\nf682dd75654c1b433a04e554bf5d0d611097a241\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910\n2f35256813483b4cc9d5f8f532d01186942fa0d9" > /usr/local/lib/android/sdk/licenses/android-sdk-license
+        yes | sdkmanager --licenses || true
+
     - name: Grant Execute Permission for Gradle
       run: chmod +x gradlew
 
-    # PERBAIKAN TOTAL: Menulis ulang build.gradle agar bersih & kompatibel dengan Gradle baru
-    - name: Rewrite Android Build Configuration
+    # PERBAIKAN CONFIG: bypass error keystore asli tanpa merusak struktur module build.gradle bawaan
+    - name: Bypass Keystore Error
       run: |
-        cat << 'EOF' > app/build.gradle
-        plugins {
-            id 'com.android.application'
-        }
-
-        android {
-            namespace 'com.fastsmartsystem.cleoeditor'
-            compileSdkVersion 33
-
-            defaultConfig {
-                applicationId "com.fastsmartsystem.cleoeditor"
-                minSdkVersion 21
-                targetSdkVersion 33
-                versionCode 1
-                versionName "1.0"
-            }
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                }
-            }
-        }
-
-        dependencies {
-            implementation fileTree(dir: 'libs', include: ['*.jar'])
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'com.google.android.material:material:1.9.0'
-            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-        }
-        EOF
+        echo "storeFile=mock.keystore" > app/keystore.config
+        echo "storePassword=mock_password" >> app/keystore.config
+        echo "keyAlias=mock_alias" >> app/keystore.config
+        echo "keyPassword=mock_password" >> app/keystore.config
+        touch app/mock.keystore
 
     - name: Build Debug APK
       run: ./gradlew assembleDebug --no-daemon
@@ -67,4 +48,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: cleo-editor-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: |
+          **/build/outputs/apk/debug/*.apk

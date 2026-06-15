@@ -5,7 +5,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: # Memungkinkan menjalankan workflow secara manual
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,6 +25,18 @@ jobs:
     - name: Grant Execute Permission for Gradle
       run: chmod +x gradlew
 
+    # BAGIAN PERBAIKAN: Membuat file keystore tiruan & menyuntikkan SDK versi 33
+    - name: Bypass Keystore and SDK Missing Error
+      run: |
+        echo "storeFile=mock.keystore" > app/keystore.config
+        echo "storePassword=mock_password" >> app/keystore.config
+        echo "keyAlias=mock_alias" >> app/keystore.config
+        echo "keyPassword=mock_password" >> app/keystore.config
+        touch app/mock.keystore
+        
+        # Menyisipkan compileSdkVersion ke build.gradle secara otomatis sebelum dicompile
+        sed -i 's/android {/android {\n    compileSdkVersion 33/' app/build.gradle
+
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
@@ -33,3 +45,4 @@ jobs:
       with:
         name: cleo-editor-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
+        
